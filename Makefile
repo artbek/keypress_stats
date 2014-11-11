@@ -1,5 +1,5 @@
-SOURCE = kbdlg.c
-OUTPUT = kbdlg.out
+SOURCE = main.c
+OUTPUT = keypress_stats.out
 
 main: $(SOURCE)
 	gcc $(SOURCE) -o $(OUTPUT)
