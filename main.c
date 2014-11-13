@@ -125,30 +125,56 @@ int main()
 		printf("open /dev/input/event3: %s\n", strerror(errno));
 		return 1;
 	}
-	
-	struct input_event keypress_buffer;
-	char temp_str[16];
+
+
+	struct timeval currently_down[255];
+	struct input_event kp; // key press buffer
+	char temp_str[15 + 1 + sizeof(long) + 1]; // code + space + timediff + newline
 	unsigned char temp_str_length;
 
 	while (1) {
-		if (read(input_fd, &keypress_buffer, sizeof(struct input_event)) < 0) {
+
+		if (read(input_fd, &kp, sizeof(struct input_event)) < 0) {
 			printf("%s\n", strerror(errno));
 			return 1;
 		}
 
-		if (keypress_buffer.type == 0x01) { // EV_KEY (include/uapi/linux/input.h)
-			if (keypress_buffer.value == 0) { // key release
-				lseek(scancodes_fd, 0, SEEK_END); // append
+		// EV_KEY (include/uapi/linux/input.h)
+		if (kp.type != 0x01) continue;
 
-				sprintf(temp_str, "%s\n", keycodes[keypress_buffer.code]);
-				temp_str_length = (int)strlen(keycodes[keypress_buffer.code]) + 1;
-
-				if (write(scancodes_fd, temp_str, temp_str_length) < 0) {
-					printf("write scancodes_fd: %s\n", strerror(errno));
-					return 1;
-				}
-			}
+		// on key down: save time
+		if (kp.value == 1) {
+			currently_down[kp.code] = kp.time;
 		}
+
+		// on key up: work out how long the key was down
+		if (kp.value == 0) {
+
+			if (currently_down[kp.code].tv_sec == 0 || currently_down[kp.code].tv_usec == 0) {
+				// just in case we have key-up event but no corresponding key-down event
+				continue;
+			}
+
+			unsigned long seconds_diff = kp.time.tv_sec - currently_down[kp.code].tv_sec;
+			unsigned long useconds_diff = kp.time.tv_usec - currently_down[kp.code].tv_usec;
+
+			unsigned long diff = seconds_diff * 1000000 + useconds_diff;
+
+			// reset the values
+			currently_down[kp.code].tv_sec = 0;
+			currently_down[kp.code].tv_usec = 0;
+
+			sprintf(temp_str, "%s %li\n", keycodes[kp.code], diff);
+			temp_str_length = (int)strlen(temp_str);
+
+			lseek(scancodes_fd, 0, SEEK_END); // append
+			if (write(scancodes_fd, temp_str, temp_str_length) < 0) {
+				printf("write scancodes_fd: %s\n", strerror(errno));
+				return 1;
+			}
+
+		}
+
 	}
 
 	return 0;
