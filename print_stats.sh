@@ -6,8 +6,8 @@ LOG_FILE_PATH="${LOG_FILE_NAME}"
 if [ "$#" > 1 ] && [ "$1" = "time" ]; then
 
 	cat "${LOG_FILE_PATH}" |
-	sort |
 	cut -d" " -f 1-1 |
+	sort |
 	uniq |
 	while read KEY_NAME
 	do
